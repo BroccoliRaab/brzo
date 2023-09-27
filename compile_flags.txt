@@ -1,0 +1,9 @@
+-lgrapheme
+-Llibs
+-Iinclude
+-O0
+-g
+-std=c89
+-Wall
+-pedantic
+
