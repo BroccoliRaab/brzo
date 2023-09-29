@@ -102,6 +102,7 @@ brzo_M_parse_charset(
             io_charset->negate = 1;
             i++;
         }
+
         for (; i_re_d[i] != ']' && i < i_re_d_len ; i++)
         {
             switch (i_re_d[i])
@@ -186,10 +187,10 @@ brzo_M_parse_charset(
 
             case 'D':
                 io_charset->negate = 1;
+                /* FALLTHROUGH */
             case 'd':
                 io_charset->set = malloc(sizeof(brzo_charset_d));
                 if (!io_charset) return 1;
-                /* FALLTHROUGH */
                 strcpy(io_charset->set, brzo_charset_d);
                 goto exit;
         }
@@ -218,7 +219,7 @@ brzo_M_tolkenize(
 )      
 {
     int r = 0;
-    size_t i = 0, o = 0, j;
+    size_t re_i = 0, o = 0, dest_i;
 
     *o_re_t = (brzo_tolken_t *) malloc(
             i_re_d_len * 2 * sizeof(brzo_tolken_t)
@@ -230,65 +231,66 @@ brzo_M_tolkenize(
         goto exit;
     }
 
-    for (i = 0, j = 0; i < i_re_d_len; i++, j++)
+    for (re_i = 0, dest_i = 0; re_i < i_re_d_len; re_i++, dest_i++)
     {
-        switch (i_re_d[i])
+        switch (i_re_d[re_i])
         {
         case '|':
-            (*o_re_t)[j].id = BRZO_ALTERNATION;
+            (*o_re_t)[dest_i].id = BRZO_ALTERNATION;
             break;
 
         case '*':
-            (*o_re_t)[j].id = BRZO_KLEEN;
+            (*o_re_t)[dest_i].id = BRZO_KLEEN;
             break;
 
         case '+':
-            (*o_re_t)[j].id = BRZO_PLUS;
+            (*o_re_t)[dest_i].id = BRZO_PLUS;
             break;
 
         case '?':
-            (*o_re_t)[j].id = BRZO_QUESTION;
+            (*o_re_t)[dest_i].id = BRZO_QUESTION;
             break;
             
         case ')':
-            (*o_re_t)[j].id = BRZO_RPAREN;
+            (*o_re_t)[dest_i].id = BRZO_RPAREN;
             break;
             
+        case '(':
         default:
-            if (j>0)
+            if (dest_i>0)
             {
-                switch ((*o_re_t)[j-1].id)
+                switch ((*o_re_t)[dest_i-1].id)
                 {
                 case BRZO_LPAREN:
                 case BRZO_ALTERNATION:
                 case BRZO_CONCAT:
                     break;
                 default:
-                    (*o_re_t)[j].id = BRZO_CONCAT;
-                    j++;
+                    (*o_re_t)[dest_i].id = BRZO_CONCAT;
+                    dest_i++;
                 }
             }
             /* LPAREN is here so that it gets prepended by CONCAT */
-            if (i_re_d[i] == '(')
+            if (i_re_d[re_i] == '(')
             {
-                (*o_re_t)[j].id = BRZO_LPAREN;
+                (*o_re_t)[dest_i].id = BRZO_LPAREN;
                 break;
             }
 
             /* Parse out a character set */
             r = brzo_M_parse_charset(
-                    i_re_d + i,
-                    i_re_d_len - i,
-                    &(*o_re_t)[j].charset,
+                    i_re_d + re_i,
+                    i_re_d_len - re_i,
+                    &(*o_re_t)[dest_i].charset,
                     &o
                     );
             if (r) {
-                free((*o_re_t)[j].charset.set);
+                free((*o_re_t)[dest_i].charset.set);
                 goto exit;
             }
 
-            (*o_re_t)[j].id = BRZO_CHARSET;
-            i+= o;
+            (*o_re_t)[dest_i].id = BRZO_CHARSET;
+            re_i+= o;
             break;
         }
     }
