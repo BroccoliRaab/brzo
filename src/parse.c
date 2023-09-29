@@ -1,252 +1,303 @@
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 #include "grapheme.h"
 
-static char * p_str;
-
-static int RE();
-static int TERM();
-static int SEQ();
-static int REP();
-static int CHARSET();
-static int OP();
-static int CHARSEQ();
-static int CHARSETBODY();
-static int CHAR();
-static int META();
-
-void 
-brzo_parse_setstr(char * str)
+enum brzo_token_id_e
 {
-    p_str = str;
-}
+    BRZO_NULL_TOLKEN  = 0,
+    BRZO_CHARSET,
+    BRZO_ALTERNATION,
+    BRZO_CONCAT,
+    BRZO_KLEEN ,
+    BRZO_QUESTION,
+    BRZO_PLUS,
+    BRZO_LPAREN,
+    BRZO_RPAREN       
+};
 
-uint_least32_t 
-brzo_parse_cur()
-{
-    uint_least32_t c;
-    grapheme_decode_utf8(p_str, SIZE_MAX, &c);
-    return c;
-}
+typedef enum brzo_token_id_e brzo_token_id_t;
+typedef struct brzo_charset_s brzo_charset_t;
+typedef struct brzo_tolken_s brzo_tolken_t;
 
-void
-brzo_parse_adv()
+struct brzo_charset_s
 {
-    p_str += grapheme_next_character_break_utf8(p_str, SIZE_MAX);
-}
+    uint8_t negate;
+    char * set; /* UTF-8 NUL Terminated String */
+};
+
+struct brzo_tolken_s
+{
+    brzo_token_id_t id;
+    brzo_charset_t charset;
+};
+
+static const char brzo_charset_d[] = "1234567890";
+/* TODO: Make a better whitespace charset. Missing \t, \r, \n and probably more */
+static const char brzo_charset_s[] = 
+    "\x20"                  /* SPACE */                      
+    "\xc2\xa0"              /* NO-BREAK SPACE */            
+    "\xe1\x9a\x80"          /* OGHAM SPACE MARK */          
+    "\xe2\x80\x80"          /* EN QUAD */                   
+    "\xe2\x80\x81"          /* EM QUAD */                   
+    "\xe2\x80\x82"          /* EN SPACE */                  
+    "\xe2\x80\x83"          /* EM SPACE */                  
+    "\xe2\x80\x84"          /* THREE-PER-EM SPACE */        
+    "\xe2\x80\x85"          /* FOUR-PER-EM SPACE */         
+    "\xe2\x80\x86"          /* SIX-PER-EM SPACE */          
+    "\xe2\x80\x87"          /* FIGURE SPACE */              
+    "\xe2\x80\x88"          /* PUNCTUATION SPACE */         
+    "\xe2\x80\x89"          /* THIN SPACE */                
+    "\xe2\x80\x8a"          /* HAIR SPACE */                
+    "\xe2\x80\x8b"          /* ZERO WIDTH SPACE */          
+    "\xe2\x80\xaf"          /* NARROW NO-BREAK SPACE */     
+    "\xe2\x81\x9f"          /* MEDIUM MATHEMATICAL SPACE */ 
+    "\xe3\x80\x80";         /* IDEOGRAPHIC SPACE */         
 
 int
-brzo_parse_validate(char * str)
+brzo_M_strcat(
+        char ** io_dest,
+        const char * i_append
+)
 {
-    brzo_parse_setstr(str);
-    return RE();
+    size_t prepend_sz;
+    size_t append_sz;
+    char * new_alloc;
+
+    prepend_sz = strlen(*io_dest);
+    append_sz = strlen(i_append);
+
+    new_alloc = malloc(prepend_sz + append_sz + 1);
+    if(!new_alloc)
+        return 1;
+
+    strcpy(new_alloc, *io_dest);
+    strcat(new_alloc, i_append);
+
+    free(*io_dest);
+    *io_dest = new_alloc;
+
+    return 0;
 }
 
-static int
-RE()
+size_t
+brzo_M_parse_charset(
+    const uint_least32_t * i_re_d,  /* charset after UTF-8 decode */
+    const size_t i_re_d_len,        /* length of i_re_d */
+    brzo_charset_t * io_charset,
+    size_t * o_len
+)
 {
-    switch (brzo_parse_cur())
+    size_t i = 0, uchar_len;
+    char enc[5];
+    switch (i_re_d[i])
     {
-    case '(':
-        brzo_parse_adv();
-        if (RE()) 
+    case '[':
+        io_charset->set = malloc(sizeof(uint_least32_t) * 1 + 1);
+        io_charset->set[0] = 0;
+
+        i++;
+        if ( i_re_d[i] == '^' )
         {
-            return brzo_parse_cur() == ')';
+            io_charset->negate = 1;
+            i++;
         }
-        break;
-    default :
-        if (TERM())
+        for (; i_re_d[i] != ']' && i < i_re_d_len ; i++)
         {
-            switch (brzo_parse_cur())
+            switch (i_re_d[i])
             {
-            case '|':
-                brzo_parse_adv();
-                return RE();
             case 0:
                 return 1;
+
+            case '\\':
+                i++;
+                switch (i_re_d[i])
+                {
+                case 's':
+                    if (brzo_M_strcat(&io_charset->set, brzo_charset_s))
+                    {
+                        return 1;        
+                    }
+                    io_charset->negate = 0;
+                    continue;
+
+                case 'd':
+                    if (brzo_M_strcat(&io_charset->set, brzo_charset_d))
+                    {
+                        return 1;        
+                    }
+                    io_charset->negate = 0;
+                    continue;
+
+                case 0:
+                    return 1;
+                }
+            /* FALLTHROUGH */
+
+            default: 
+                enc[
+                    grapheme_encode_utf8(
+                        i_re_d[i],
+                        enc,
+                        5
+                        )
+                    ] = 0;
+
+                if (brzo_M_strcat(&io_charset->set, enc))
+                {
+                    return 1;        
+                }
             }
         }
+        if (i >= i_re_d_len)
+            return 1;
+        break;
+
+    case '.':
+        io_charset->set = malloc (1);
+        if (!io_charset->set) return 1;
+        io_charset->set[0] = 0;
+        io_charset->negate = 1;
+        break;
+
+    case '\\':
+        i++;
+        switch (i_re_d[i])
+        {
+            case '.':
+            case '\\':
+            case '[':
+            case ']':
+            case '(':
+            case '|':
+            case '*':
+            case '+':
+            case '?':
+                break;
+
+            case 'S':
+                io_charset->negate = 1;
+                /* FALLTHROUGH */
+            case 's':
+                io_charset->set = malloc(sizeof(brzo_charset_s));
+                if (!io_charset) return 1;
+                strcpy(io_charset->set, brzo_charset_s);
+                goto exit;
+
+            case 'D':
+                io_charset->negate = 1;
+            case 'd':
+                io_charset->set = malloc(sizeof(brzo_charset_d));
+                if (!io_charset) return 1;
+                /* FALLTHROUGH */
+                strcpy(io_charset->set, brzo_charset_d);
+                goto exit;
+        }
+
+    default:
+        uchar_len = grapheme_encode_utf8(i_re_d[i], NULL, 0) + 1;
+        io_charset->set = malloc (
+                uchar_len
+                );
+        if (!io_charset->set) return 1;
+        memset(io_charset->set, 0, uchar_len);
+        grapheme_encode_utf8(i_re_d[i], io_charset->set, SIZE_MAX);
+        io_charset->negate = 0;
     }
+
+exit:
+    *o_len = i;
     return 0;
 }
 
-static int
-TERM()
+int 
+brzo_M_tolkenize(
+    const uint_least32_t * i_re_d, /* regex after UTF-8 decode */
+    const size_t i_re_d_len,        /* length of i_re_d */
+    brzo_tolken_t ** o_re_t         /* reference to destination array */
+)      
 {
-    if (SEQ())
+    int r = 0;
+    size_t i = 0, o = 0, j;
+
+    *o_re_t = (brzo_tolken_t *) malloc(
+            i_re_d_len * 2 * sizeof(brzo_tolken_t)
+        );
+
+    if (!*o_re_t)
     {
-        switch (brzo_parse_cur())
+        r = 1;
+        goto exit;
+    }
+
+    for (i = 0, j = 0; i < i_re_d_len; i++, j++)
+    {
+        switch (i_re_d[i])
         {
-        case 0:
         case '|':
-        case ')':
-            return 1;
-        case '~':
+            (*o_re_t)[j].id = BRZO_ALTERNATION;
+            break;
+
         case '*':
+            (*o_re_t)[j].id = BRZO_KLEEN;
+            break;
+
         case '+':
-        case '-':
+            (*o_re_t)[j].id = BRZO_PLUS;
+            break;
+
         case '?':
-            return 0;
+            (*o_re_t)[j].id = BRZO_QUESTION;
+            break;
+            
+        case ')':
+            (*o_re_t)[j].id = BRZO_RPAREN;
+            break;
+            
         default:
-            return TERM();
-        }
-    }
-    return 0;
-}
-
-static int
-SEQ()
-{
-    if (brzo_parse_cur() == '~')
-    {
-        brzo_parse_adv();
-    }
-    return REP();
-}
-
-static int
-REP()
-{
-    if (CHARSET())
-    {
-        switch (brzo_parse_cur())
-        {
-        case 0:
-        case '|':
-        case ')':
-            return 1;
-        case '~':
-            return 0;
-        case '*':
-        case '+':
-        case '-':
-        case '?':
-            return OP();
-        }
-        return 1;
-    }
-    return 0;
-}
-
-static int 
-OP()
-{
-    switch (brzo_parse_cur())
-    {
-    case '*':
-    case '+':
-    case '-':
-    case '?':
-        brzo_parse_adv();
-        return 1;
-    }
-    return 0;
-}
-
-static int 
-CHARSET()
-{
-    switch (brzo_parse_cur())
-    {
-    case '[':
-        brzo_parse_adv();
-        if (CHARSETBODY())
-            if (brzo_parse_cur() == ']')
+            if (j>0)
             {
-                brzo_parse_adv();
-                return 1;
+                switch ((*o_re_t)[j-1].id)
+                {
+                case BRZO_LPAREN:
+                case BRZO_ALTERNATION:
+                case BRZO_CONCAT:
+                    break;
+                default:
+                    (*o_re_t)[j].id = BRZO_CONCAT;
+                    j++;
+                }
             }
-        return 0;
-    default:
-        return CHAR();
-    }
-}
+            /* LPAREN is here so that it gets prepended by CONCAT */
+            if (i_re_d[i] == '(')
+            {
+                (*o_re_t)[j].id = BRZO_LPAREN;
+                break;
+            }
 
-static int
-CHAR()
-{
-    switch (brzo_parse_cur())
-    {
-    case '\\':
-        brzo_parse_adv();
-        return META();
-    case 0: 
-    case '|':
-    case ')':
-    case '(':
-    case '~':
-    case '*':
-    case '+':
-    case '-':
-    case '?':
-    case '[':
-    case ']':
-    case '$':
-    case '^':
-        return 0;
-    }
-    brzo_parse_adv();
-    return 1;
-}
+            /* Parse out a character set */
+            r = brzo_M_parse_charset(
+                    i_re_d + i,
+                    i_re_d_len - i,
+                    &(*o_re_t)[j].charset,
+                    &o
+                    );
+            if (r) {
+                free((*o_re_t)[j].charset.set);
+                goto exit;
+            }
 
-static int
-META()
-{
-    switch (brzo_parse_cur())
-    {
-    case '|':
-    case ')':
-    case '(':
-    case '~':
-    case '\\':
-    case '*':
-    case '+':
-    case '-':
-    case '?':
-    case '[':
-    case ']':
-    case '$':
-    case '^':
-        brzo_parse_adv();
-        return 1;
-    default:
-        return 0;
-    }
-}
-
-static int
-CHARSETBODY()
-{
-    if (brzo_parse_cur()=='^')
-    {
-        brzo_parse_adv();
-    }
-    return CHARSEQ();
-}
-
-static int
-CHARSEQ()
-{
-    if (CHAR())
-    {
-       switch (brzo_parse_cur()) 
-        {
-        case '|':
-        case ')':
-        case '(':
-        case '~':
-        case '\\':
-        case '*':
-        case '+':
-        case '-':
-        case '?':
-        case '[':
-        case '$':
-        case '^':
-            return 0;
-        case ']':
-            return 1;
-        default:
-            return CHARSEQ();
+            (*o_re_t)[j].id = BRZO_CHARSET;
+            i+= o;
+            break;
         }
     }
-    return 0;
+
+exit:
+    if (r)
+    {
+        free(*o_re_t);
+        *o_re_t = NULL;
+    }
+    return r;
 }
