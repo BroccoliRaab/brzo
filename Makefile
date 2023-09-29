@@ -27,5 +27,10 @@ compile_flags.txt:
 
 clean: 
 	rm -r bin/
+	cd ext/libgrapheme-2.0.2 && make clean
+	cd test && make clean
+
+clean_libs:
+	rm lib/*
 
 .PHONY: clean libs
