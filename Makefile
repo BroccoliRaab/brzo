@@ -16,6 +16,7 @@ bin:
 libs: lib/libgrapheme.a include/grapheme.h
 
 lib/libgrapheme.a:
+	cd ext/libgrapheme-2.0.2 && make clean
 	cd ext/libgrapheme-2.0.2 && make
 	cp ext/libgrapheme-2.0.2/libgrapheme.a lib
 
@@ -31,6 +32,6 @@ clean:
 	cd test && make clean
 
 clean_libs:
-	rm lib/*
+	rm lib/* include/grapheme.h
 
 .PHONY: clean libs

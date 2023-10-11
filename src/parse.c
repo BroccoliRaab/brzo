@@ -294,7 +294,7 @@ brzo_M_parse(
         brzo_re_t * o_re
 )
 {
-    size_t i = 0, r = 1, d_i =0;
+    size_t i = 0, gl = 1, d_i =0;
     uint_least32_t * p = NULL;
     brzo_tolken_t * tk = NULL;
     size_t plen;
@@ -315,8 +315,8 @@ brzo_M_parse(
 
     for (d_i = 0; i < plen; d_i++)
     {
-        r = grapheme_decode_utf8(i_re_str + i, SIZE_MAX, p+d_i);
-        i += r;
+        gl = grapheme_decode_utf8(i_re_str + i, SIZE_MAX, p+d_i);
+        i += gl;
     }
     if ( brzo_M_tolkenize(p, d_i,  &tk) )
         goto error;
@@ -324,30 +324,22 @@ brzo_M_parse(
     if (brzo_re_build(tk, o_re))
         goto error;
 
+    free(p);
+    free(tk);
 
     return 0;
 
 error:
     free(p);
     brzo_F_re_stack_free(o_re);
-    brzo_F_free_regex(tk);
-    return 1;
-}
 
-/* TODO: Rename */
-void
-brzo_F_free_regex(
-        brzo_tolken_t * tk
-)
-{
-    size_t i;
-    if (!tk) return;
+    /* Free all tokens' charsets */
     for(i = 0; tk[i].id != BRZO_NULL_TOLKEN; i++)
     {
         free(tk[i].charset.set);
     }
-
     free(tk);
+    return 1;
 }
 
 int

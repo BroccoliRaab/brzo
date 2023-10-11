@@ -40,8 +40,7 @@ brzo_parse(char * p_str)
            printf(": %s \"%s\"\n",
                 re.bot[i].charset.negate ? "INVERTED" : "",
                 re.bot[i].charset.set
-            );
-           free(re.bot[i].charset.set);
+           );
         } else {
             puts("");
         }

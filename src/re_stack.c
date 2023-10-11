@@ -69,7 +69,13 @@ brzo_F_re_stack_free(
     brzo_re_stack_t *io_re_stack    
 )
 {
+    int i;
     if (!io_re_stack) return;
+    for (i = 0; i <= io_re_stack->top_index; i++)
+    {
+        free(io_re_stack->bot[i].charset.set);
+    }
+
     free(io_re_stack->bot);
     io_re_stack->bot = NULL;
 }
