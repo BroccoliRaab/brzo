@@ -277,6 +277,7 @@ brzo_M_tolkenize(
             break;
         }
     }
+    (*o_re_t)[dest_i].id = BRZO_NULL_TOLKEN;
 
 exit:
     if (r)
