@@ -3,36 +3,16 @@
 #include <stdio.h>
 #include "grapheme.h"
 
-enum brzo_token_id_e
-{
-    BRZO_NULL_TOLKEN  = 0,
-    BRZO_CHARSET,
-    BRZO_ALTERNATION,
-    BRZO_CONCAT,
-    BRZO_KLEEN ,
-    BRZO_QUESTION,
-    BRZO_PLUS,
-    BRZO_LPAREN,
-    BRZO_RPAREN       
-};
+#include "re_stack.h"
 
-typedef enum brzo_token_id_e brzo_token_id_t;
-typedef struct brzo_charset_s brzo_charset_t;
-typedef struct brzo_tolken_s brzo_tolken_t;
-
-struct brzo_charset_s
-{
-    uint8_t negate;
-    char * set; /* UTF-8 NUL Terminated String */
-};
-
-struct brzo_tolken_s
-{
-    brzo_token_id_t id;
-    brzo_charset_t charset;
-};
+int
+brzo_re_build(
+    const brzo_tolken_t * i_tk,
+    brzo_re_t * o_re
+);
 
 static const char brzo_charset_d[] = "1234567890";
+
 /* TODO: Make a better whitespace charset. Missing \t, \r, \n and probably more */
 static const char brzo_charset_s[] = 
     "\x20"                  /* SPACE */                      
@@ -67,6 +47,7 @@ brzo_M_strcat(
     prepend_sz = strlen(*io_dest);
     append_sz = strlen(i_append);
 
+    /* TODO: Change to realloc */
     new_alloc = malloc(prepend_sz + append_sz + 1);
     if(!new_alloc)
         return 1;
@@ -194,12 +175,13 @@ brzo_M_parse_charset(
                 strcpy(io_charset->set, brzo_charset_d);
                 goto exit;
         }
+        /* FALLTHROUGH */
 
     default:
         uchar_len = grapheme_encode_utf8(i_re_d[i], NULL, 0) + 1;
         io_charset->set = malloc (
                 uchar_len
-                );
+            );
         if (!io_charset->set) return 1;
         memset(io_charset->set, 0, uchar_len);
         grapheme_encode_utf8(i_re_d[i], io_charset->set, SIZE_MAX);
@@ -286,6 +268,7 @@ brzo_M_tolkenize(
                     );
             if (r) {
                 free((*o_re_t)[dest_i].charset.set);
+                (*o_re_t)[dest_i].charset.set = NULL;
                 goto exit;
             }
 
@@ -303,3 +286,192 @@ exit:
     }
     return r;
 }
+
+int 
+brzo_M_parse(
+        char * i_re_str,
+        brzo_re_t * o_re
+)
+{
+    size_t i = 0, r = 1, d_i =0;
+    uint_least32_t * p = NULL;
+    brzo_tolken_t * tk = NULL;
+    size_t plen;
+
+    memset(o_re, 0, sizeof(brzo_re_t));
+
+    plen = strlen(i_re_str);
+    if (plen == 0)
+    {
+        return 1;
+    }
+
+    p = malloc (sizeof(uint_least32_t) * strlen(i_re_str) + 1);
+    if (!p)
+        goto error;
+
+    memset(p, 0,  sizeof(uint_least32_t) * strlen(i_re_str) + 1);
+
+    for (d_i = 0; i < plen; d_i++)
+    {
+        r = grapheme_decode_utf8(i_re_str + i, SIZE_MAX, p+d_i);
+        i += r;
+    }
+    if ( brzo_M_tolkenize(p, d_i,  &tk) )
+        goto error;
+
+    if (brzo_re_build(tk, o_re))
+        goto error;
+
+
+    return 0;
+
+error:
+    free(p);
+    brzo_F_re_stack_free(o_re);
+    brzo_F_free_regex(tk);
+    return 1;
+}
+
+/* TODO: Rename */
+void
+brzo_F_free_regex(
+        brzo_tolken_t * tk
+)
+{
+    size_t i;
+    if (!tk) return;
+    for(i = 0; tk[i].id != BRZO_NULL_TOLKEN; i++)
+    {
+        free(tk[i].charset.set);
+    }
+
+    free(tk);
+}
+
+int
+brzo_re_build(
+    const brzo_tolken_t * i_tk,
+    brzo_re_t * o_re
+)
+{
+    brzo_tolken_t *cur_tk = (brzo_tolken_t*) i_tk;
+    brzo_re_stack_t opstack;
+    brzo_tolken_t tmp[2];
+    int r;
+
+    r = brzo_M_re_stack_new(o_re);
+    if (r) 
+    {
+        goto exit;
+    }
+
+    r = brzo_M_re_stack_new(&opstack);
+    if (r) 
+    {
+        goto exit;
+    }
+
+    for (; cur_tk->id != BRZO_NULL_TOLKEN ;cur_tk++)
+    {
+        switch(cur_tk->id)
+        {
+        case BRZO_CHARSET:
+            r = brzo_re_stack_push(*cur_tk, o_re);
+            if (r) 
+            {
+                goto exit;
+            }
+            break;
+        case BRZO_LPAREN:
+            r = brzo_re_stack_push(*cur_tk, &opstack);
+            if (r) 
+            {
+                goto exit;
+            }
+            break;
+        case BRZO_RPAREN:
+            while (
+                    !brzo_re_stack_peek(&opstack, tmp)
+                    && tmp[0].id != BRZO_LPAREN
+            )
+            {
+                r = brzo_re_stack_pop(&opstack, tmp+1);
+                if (r) 
+                {
+                    goto exit;
+                }
+                r = brzo_re_stack_push(tmp[1], o_re);
+                if (r) 
+                {
+                    goto exit;
+                }
+            }
+            r = brzo_re_stack_pop(&opstack, tmp);
+            if(r) 
+            {
+                goto exit;
+            }
+            break;
+        default:
+            while(
+                    !brzo_re_stack_peek(&opstack, tmp)
+                    && tmp[0].id > cur_tk->id
+            )
+            {
+                r = brzo_re_stack_pop(&opstack, tmp+1);
+                if (r) 
+                {
+                    goto exit;
+                }
+                r = brzo_re_stack_push(tmp[1], o_re);
+                if (r) 
+                {
+                    goto exit;
+                }
+            }
+            r = brzo_re_stack_push(*cur_tk, &opstack);
+            if (r) 
+            {
+                goto exit;
+            }
+            break;
+        }
+    }
+    while(!brzo_re_stack_peek(&opstack, NULL))
+    {
+        r = brzo_re_stack_pop(&opstack, tmp);
+        if(r) 
+        {
+            goto exit;
+        }
+        r = brzo_re_stack_push(tmp[0], o_re);
+        if(r) 
+        {
+            goto exit;
+        }
+    }
+exit:
+    if (r)
+    {
+        brzo_F_re_stack_free(o_re);
+    }
+    brzo_F_re_stack_free(&opstack);
+    return r;
+}
+
+int brzo_M_re_validate(
+
+)
+{
+    return 1;
+}
+
+int brzo_derive(
+    brzo_re_stack_t *re,
+    uint_least32_t c
+)
+{
+    return 1;
+}
+
