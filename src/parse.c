@@ -42,21 +42,20 @@ brzo_M_strcat(
 {
     size_t prepend_sz;
     size_t append_sz;
-    char * new_alloc;
 
     prepend_sz = strlen(*io_dest);
     append_sz = strlen(i_append);
 
-    /* TODO: Change to realloc */
-    new_alloc = malloc(prepend_sz + append_sz + 1);
-    if(!new_alloc)
+    *io_dest = realloc(
+            *io_dest,
+            prepend_sz + append_sz + 1
+        );
+    if(!*io_dest)
+    {
         return 1;
+    }
 
-    strcpy(new_alloc, *io_dest);
-    strcat(new_alloc, i_append);
-
-    free(*io_dest);
-    *io_dest = new_alloc;
+    strcat(*io_dest, i_append);
 
     return 0;
 }
@@ -71,6 +70,7 @@ brzo_M_parse_charset(
 {
     size_t i = 0, uchar_len;
     char enc[5];
+    io_charset->negate = 0;
     switch (i_re_d[i])
     {
     case '[':
@@ -129,6 +129,7 @@ brzo_M_parse_charset(
                 {
                     return 1;        
                 }
+                io_charset->negate = 0;
             }
         }
         if (i >= i_re_d_len)
@@ -212,6 +213,8 @@ brzo_M_tolkenize(
         r = 1;
         goto exit;
     }
+
+    (*o_re_t)->charset.set = NULL;
 
     for (re_i = 0, dest_i = 0; re_i < i_re_d_len; re_i++, dest_i++)
     {

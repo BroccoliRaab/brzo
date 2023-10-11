@@ -38,6 +38,7 @@ brzo_parse(char * p_str)
         if (re.bot[i].id == BRZO_CHARSET)
         {
            printf(": %s \"%s\"\n",
+                /* TODO: BUG. charset.negate is sometimes uninitialized */
                 re.bot[i].charset.negate ? "INVERTED" : "",
                 re.bot[i].charset.set
            );
@@ -53,13 +54,11 @@ error:
 int main()
 {
     int i;
-    char b[256];
-    for (;;){
-        fgets(b, 256, stdin);
-        for (i =0; b[i] != '\n';i++);
-        b[i]=0;
+    char b[512];
+    fgets(b, sizeof(b), stdin);
+    for (i =0; b[i] != '\n';i++);
+    b[i]=0;
 
-        brzo_parse(b);
-    }
+    brzo_parse(b);
     return 0;
 }

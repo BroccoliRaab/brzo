@@ -36,4 +36,10 @@ brzo_F_re_stack_free(
     brzo_re_stack_t *io_re_stack    
 );
 
+int
+brzo_M_re_stack_dup(
+    const brzo_re_stack_t * i_src,
+    brzo_re_stack_t * o_dst
+);
+
 #endif /* RE_STACK_H */

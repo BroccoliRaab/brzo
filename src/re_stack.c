@@ -73,9 +73,31 @@ brzo_F_re_stack_free(
     if (!io_re_stack) return;
     for (i = 0; i <= io_re_stack->top_index; i++)
     {
-        free(io_re_stack->bot[i].charset.set);
+        if (io_re_stack->bot[i].id == BRZO_CHARSET)
+        {
+            free(io_re_stack->bot[i].charset.set);
+        }
     }
 
     free(io_re_stack->bot);
     io_re_stack->bot = NULL;
+}
+
+int
+brzo_M_re_stack_dup(
+    const brzo_re_stack_t * i_src,
+    brzo_re_stack_t * o_dst
+)
+{
+    brzo_re_stack_t tmp;
+    
+    if (!i_src) return 1;
+    tmp = *i_src;
+    
+    tmp.bot = malloc(sizeof(brzo_tolken_t) * (tmp.top_index+1));
+    if (!tmp.bot) return 1;
+
+    *o_dst = tmp;
+
+    return 0;
 }
