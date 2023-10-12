@@ -68,8 +68,9 @@ brzo_M_parse_charset(
     size_t * o_len
 )
 {
-    size_t i = 0, uchar_len;
-    char enc[5];
+    size_t i = 0, uchar_len, j;
+    char enc[32];
+    char j_c;
     io_charset->negate = 0;
     switch (i_re_d[i])
     {
@@ -90,6 +91,58 @@ brzo_M_parse_charset(
             {
             case 0:
                 return 1;
+
+            case '-':
+                if (
+                    (
+                     /* Check for [0-9] */
+                     i_re_d[i-1] >= '0' && i_re_d[i-1] <= '9'
+                     && i_re_d[i+1] >= '0' && i_re_d[i+1] <= '9'
+                    ) ||
+                    (
+                     /* Check for [A-Z] */
+                     i_re_d[i-1] >= 'A' && i_re_d[i-1] <= 'Z'
+                     && i_re_d[i+1] >= 'A' && i_re_d[i+1] <= 'Z'
+                    ) ||
+                    (
+                     /* Check for [a-z] */
+                     i_re_d[i-1] >= 'a' && i_re_d[i-1] <= 'z'
+                     && i_re_d[i+1] >= 'a' && i_re_d[i+1] <= 'z'
+                    )
+                )
+                {
+                    /* ranges [z-a] [y-a] [y-g] etc not legal */
+                    if (i_re_d[i-1] > i_re_d[i+1])
+                    {
+                        return 1;
+                    }
+                    if (i_re_d[i-1] == i_re_d[i+1])
+                    {
+                        i++;
+                        break;
+                    }
+                    j_c = i_re_d[i-1] + 1;
+                    for (j =0; j_c < i_re_d[i+1]; j++)
+                    {
+                        enc[j] = j_c;
+                        j_c++;
+                    }
+                    enc[j] = 0;
+                    if (brzo_M_strcat(&io_charset->set, enc))
+                    {
+                        return 1;        
+                    }
+                    break;
+                } 
+
+                /* Treat '-' as hyphen if cannot parse a range */
+                enc[0] = '-';
+                enc[1] = 0;
+                if (brzo_M_strcat(&io_charset->set, enc))
+                {
+                    return 1;        
+                }
+                break;
 
             case '\\':
                 i++;
@@ -335,6 +388,8 @@ brzo_M_parse(
 error:
     free(p);
     brzo_F_re_stack_free(o_re);
+
+    if (!tk) return 1;
 
     /* Free all tokens' charsets */
     for(i = 0; tk[i].id != BRZO_NULL_TOLKEN; i++)

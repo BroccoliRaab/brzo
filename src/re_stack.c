@@ -71,11 +71,14 @@ brzo_F_re_stack_free(
 {
     int i;
     if (!io_re_stack) return;
-    for (i = 0; i <= io_re_stack->top_index; i++)
+    if (io_re_stack->bot)
     {
-        if (io_re_stack->bot[i].id == BRZO_CHARSET)
+        for (i = 0; i <= io_re_stack->top_index; i++)
         {
-            free(io_re_stack->bot[i].charset.set);
+            if (io_re_stack->bot[i].id == BRZO_CHARSET)
+            {
+                free(io_re_stack->bot[i].charset.set);
+            }
         }
     }
 
