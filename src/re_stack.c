@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include "re_stack.h"
 
 int
@@ -97,8 +98,12 @@ brzo_M_re_stack_dup(
     if (!i_src) return 1;
     tmp = *i_src;
     
-    tmp.bot = malloc(sizeof(brzo_tolken_t) * (tmp.top_index+1));
+    tmp.bot = malloc(sizeof(brzo_tolken_t) * (tmp.cap));
     if (!tmp.bot) return 1;
+    /* TODO: does not currently copy allocations of charset */
+    /* Decide if is this is intended or not then change name/implementation */
+    memcpy(tmp.bot, i_src->bot, i_src->cap * sizeof(brzo_tolken_t));
+
 
     *o_dst = tmp;
 
