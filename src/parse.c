@@ -139,7 +139,7 @@ brzo_M_parse_charset(
                     break;
                 } 
 
-                /* Treat '-' as hyphen if cannot parse a range */
+                /* Treat '-' as literal if cannot parse a range */
                 enc[0] = '-';
                 enc[1] = 0;
                 if (brzo_M_strcat(&io_charset->set, enc))
@@ -537,38 +537,20 @@ brzo_re_validate_rec(
     }
     switch(ct.id)
     {
-    case BRZO_PLUS:
-    case BRZO_QUESTION:
-    case BRZO_KLEEN:
-        r = brzo_re_stack_pop(re, &ct);
-        if (r)
-        {
-            return 0;   
-        }
-        switch (ct.id)
-        {
-            case BRZO_CHARSET:
-                return 1;
-            default:
-                return 0;
-            case BRZO_CONCAT:
-            case BRZO_ALTERNATION:
-                break;
-        }
-        /* FALLTHROUGH */
-    
+ 
     case BRZO_CONCAT:
     case BRZO_ALTERNATION:
         if (!brzo_re_validate_rec(re))
         {
             return 0;
         }
-        if (!brzo_re_validate_rec(re))
-        {
-            return 0;
-        }
-        return 1;
+    /*FALLTHROUGH*/
 
+    case BRZO_PLUS:
+    case BRZO_QUESTION:
+    case BRZO_KLEEN:
+        return brzo_re_validate_rec(re);
+ 
 
     case BRZO_CHARSET:
         return 1;
