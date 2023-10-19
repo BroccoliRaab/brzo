@@ -214,7 +214,11 @@ brzo_M_parse_charset(
             case '+':
             case '?':
                 break;
+            
+            case 0:
+                return 1;
 
+            /* TODO: This doesn't quite work. Consider [^\S] */
             case 'S':
                 io_charset->negate = 1;
                 /* FALLTHROUGH */
@@ -372,12 +376,12 @@ brzo_M_parse(
         goto error;
 
     memset(p, 0,  sizeof(uint_least32_t) * strlen(i_re_str) + 1);
-
     for (d_i = 0; i < plen; d_i++)
     {
         gl = grapheme_decode_utf8(i_re_str + i, SIZE_MAX, p+d_i);
         i += gl;
     }
+
     if ( brzo_M_tolkenize(p, d_i,  &tk) )
         goto error;
 
@@ -392,6 +396,7 @@ brzo_M_parse(
 
     return 0;
 
+/*TODO: Refactor. Not consistent style */
 error:
     free(p);
     brzo_F_re_stack_free(o_re);
@@ -532,17 +537,38 @@ brzo_re_validate_rec(
     }
     switch(ct.id)
     {
+    case BRZO_PLUS:
+    case BRZO_QUESTION:
+    case BRZO_KLEEN:
+        r = brzo_re_stack_pop(re, &ct);
+        if (r)
+        {
+            return 0;   
+        }
+        switch (ct.id)
+        {
+            case BRZO_CHARSET:
+                return 1;
+            default:
+                return 0;
+            case BRZO_CONCAT:
+            case BRZO_ALTERNATION:
+                break;
+        }
+        /* FALLTHROUGH */
+    
     case BRZO_CONCAT:
     case BRZO_ALTERNATION:
         if (!brzo_re_validate_rec(re))
         {
             return 0;
         }
+        if (!brzo_re_validate_rec(re))
+        {
+            return 0;
+        }
+        return 1;
 
-    case BRZO_PLUS:
-    case BRZO_QUESTION:
-    case BRZO_KLEEN:
-        return brzo_re_validate_rec(re);
 
     case BRZO_CHARSET:
         return 1;
