@@ -2,13 +2,17 @@ CC?=clang
 
 SRC=src/*
 
-LD_FLAGS=-lgrapheme -Llibs
-CFLAGS=-O0 -g -std=c89 -Wall -pedantic 
+CFLAGS=-c -O0 -g -std=c99 -Wall -pedantic  -fpic -flto 
 INCLUDE=-Iinclude
 
+bin/libbrzo.a: bin/re_stack.o bin/parse.o
+	ar rcs $@ bin/re_stack.o bin/parse.o
 
-bin/parse.o: bin $(SRC) libs
-	$(CC) $(SRC) $(CFLAGS) -o bin/$(NAME) $(LD_FLAGS) $(INCLUDE) 
+bin/re_stack.o: bin src/re_stack.c
+	$(CC) src/re_stack.c $(CFLAGS) $(INCLUDE) -o bin/re_stack.o
+
+bin/parse.o: bin src/parse.c libs
+	$(CC) src/parse.c $(CFLAGS) $(INCLUDE) -o bin/parse.o
 
 bin: 
 	mkdir -p bin

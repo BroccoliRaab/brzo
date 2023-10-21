@@ -1,6 +1,6 @@
 CC?=cc
 CFLAGS= -g -O0 -std=c99 -Wpedantic -Wall -Werror
-LD_FLAGS=-L../lib -lgrapheme
+LD_FLAGS=-L../lib -lgrapheme -L../bin -lbrzo
 INCLUDE_FLAGS=-I../include
 
 parse_toy:libs parse_toy.c

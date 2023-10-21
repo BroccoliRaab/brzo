@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include "grapheme.h"
 
-#include "../src/parse.c"
-#include "../src/re_stack.c"
+#include "../include/brzo_parse.h"
+#include "../include/re_stack.h"
 
 static char tolkenstr[9][25] = {
     "BRZO_NULL_TOLKEN",
@@ -48,7 +48,7 @@ brzo_parse(char * p_str)
     }
 
 error:
-    brzo_F_re_stack_free(&re);
+    /* TODO: Free the regex. Function not yet implemented */
     return 0;
 }
 int main()
