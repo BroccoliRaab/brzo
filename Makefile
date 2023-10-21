@@ -6,7 +6,8 @@ CFLAGS=-c -O0 -g -std=c99 -Wall -pedantic  -fpic -flto
 INCLUDE=-Iinclude
 
 bin/libbrzo.a: bin/re_stack.o bin/parse.o
-	ar rcs $@ bin/re_stack.o bin/parse.o
+	ar rcs bin/libbrzo.la bin/re_stack.o bin/parse.o
+	ar -M <build_lib.mri
 
 bin/re_stack.o: bin src/re_stack.c
 	$(CC) src/re_stack.c $(CFLAGS) $(INCLUDE) -o bin/re_stack.o
