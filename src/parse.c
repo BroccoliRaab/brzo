@@ -126,7 +126,7 @@ brzo_M_parse_charset(
                         break;
                     }
                     j_c = i_re_d[i-1] + 1;
-                    for (j =0; j_c < i_re_d[i+1]; j++)
+                    for (j = 0; j_c < i_re_d[i+1]; j++)
                     {
                         enc[j] = j_c;
                         j_c++;
@@ -241,9 +241,7 @@ brzo_M_parse_charset(
 
     default:
         uchar_len = grapheme_encode_utf8(i_re_d[i], NULL, 0) + 1;
-        io_charset->set = malloc (
-                uchar_len
-            );
+        io_charset->set = malloc (uchar_len);
         if (!io_charset->set) return 1;
         memset(io_charset->set, 0, uchar_len);
         grapheme_encode_utf8(i_re_d[i], io_charset->set, SIZE_MAX);
@@ -590,12 +588,3 @@ exit:
     brzo_F_re_stack_free(&re_mut);
     return v;
 }
-
-int brzo_re_derive(
-    brzo_re_stack_t *re,
-    uint_least32_t c
-)
-{
-    return 1;
-}
-

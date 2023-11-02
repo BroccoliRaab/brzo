@@ -19,7 +19,9 @@ enum brzo_token_id_e
     BRZO_CONCAT,
     BRZO_KLEEN,
     BRZO_QUESTION,
-    BRZO_PLUS
+    BRZO_PLUS,
+    BRZO_EMPTY_STRING,
+    BRZO_EMPTY_SET
 };
 typedef enum brzo_token_id_e brzo_token_id_t;
 

@@ -14,6 +14,12 @@ brzo_M_re_stack_new (
 );
 
 int
+brzo_M_re_stack_new_cap (
+    brzo_re_stack_t * o_re_stack,
+    size_t cap
+);
+
+int
 brzo_re_stack_push(
     const brzo_tolken_t i_val,
     brzo_re_stack_t * io_re_stack
@@ -40,6 +46,12 @@ int
 brzo_M_re_stack_dup(
     const brzo_re_stack_t * i_src,
     brzo_re_stack_t * o_dst
+);
+
+int 
+brzo_re_stack_merge(
+    brzo_re_stack_t * io_bottom,
+    const brzo_re_stack_t * i_top
 );
 
 #endif /* RE_STACK_H */

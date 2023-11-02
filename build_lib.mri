@@ -1,0 +1,6 @@
+create bin/libbrzo.a
+addlib lib/libgrapheme.a
+addlib bin/libbrzo.la
+save
+end
+

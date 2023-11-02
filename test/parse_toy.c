@@ -4,8 +4,9 @@
 
 #include "../include/brzo_parse.h"
 #include "../include/re_stack.h"
+#include "../include/derive.h"
 
-static char tolkenstr[9][25] = {
+static char tolkenstr[][25] = {
     "BRZO_NULL_TOLKEN",
     "BRZO_CHARSET",
     "BRZO_RPAREN",
@@ -14,7 +15,9 @@ static char tolkenstr[9][25] = {
     "BRZO_CONCAT",
     "BRZO_KLEEN ",
     "BRZO_QUESTION",
-    "BRZO_PLUS"
+    "BRZO_PLUS",
+    "BRZO_EMPTY_STRING",
+    "BRZO_EMPTY_SET"
 };
 
 int 
@@ -24,6 +27,31 @@ brzo_parse(char * p_str)
     brzo_re_t re;
 
     if (brzo_M_parse(p_str, &re))
+        goto error;
+
+    for(i = 0; i<=re.top_index; i++)
+    {
+        printf("%s",
+                tolkenstr[
+                    re.bot[i].id
+                ]
+            );
+
+        if (re.bot[i].id == BRZO_CHARSET)
+        {
+           printf(": %s \"%s\"\n",
+                /* TODO: BUG. charset.negate is sometimes uninitialized */
+                re.bot[i].charset.negate ? "INVERTED" : "",
+                re.bot[i].charset.set
+           );
+        } else {
+            puts("");
+        }
+    }
+
+    puts("\n\nDerivative:\n");
+
+    if (brzo_re_derive('a', &re)) 
         goto error;
 
     for(i = 0; i<=re.top_index; i++)

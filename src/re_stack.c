@@ -20,6 +20,22 @@ brzo_M_re_stack_new (
 }
 
 int
+brzo_M_re_stack_new_cap (
+        brzo_re_stack_t * o_re_stack,
+        size_t cap
+    )
+{
+    o_re_stack->top_index = -1;
+    o_re_stack->cap = cap;
+    o_re_stack->bot = malloc(sizeof(brzo_tolken_t) * o_re_stack->cap);
+    if (!o_re_stack->bot)
+    {
+        return 1;
+    }
+    return 0;
+}
+
+int
 brzo_re_stack_push(
     const brzo_tolken_t i_val,
     brzo_re_stack_t * io_re_stack
@@ -48,7 +64,10 @@ brzo_re_stack_pop(
     {
         return 1;
     }
-    *o_val = io_re_stack->bot[io_re_stack->top_index];
+    if (o_val)
+    {
+        *o_val = io_re_stack->bot[io_re_stack->top_index];
+    }
     io_re_stack->top_index--;
     return 0;
 }
@@ -94,8 +113,30 @@ brzo_M_re_stack_dup(
     /* Decide if is this is intended or not then change name/implementation */
     memcpy(tmp.bot, i_src->bot, i_src->cap * sizeof(brzo_tolken_t));
 
-
     *o_dst = tmp;
 
+    return 0;
+}
+
+int 
+brzo_re_stack_merge(
+    brzo_re_stack_t * io_bottom,
+    const brzo_re_stack_t * i_top
+)
+{
+    /*TODO: be more memory efficient */
+    io_bottom->bot = realloc(
+        io_bottom->bot,
+        sizeof(brzo_tolken_t) * (io_bottom->cap + i_top->cap)
+    );
+    if (!io_bottom->bot) return 1;
+
+    memcpy(
+        &io_bottom->bot[io_bottom->top_index+1],
+        i_top->bot,
+        i_top->cap * sizeof(brzo_tolken_t)
+    );
+    io_bottom->cap = io_bottom->cap + i_top->cap;
+    io_bottom->top_index = io_bottom->top_index + i_top->top_index + 1;
     return 0;
 }
