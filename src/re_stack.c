@@ -27,7 +27,7 @@ brzo_M_re_stack_new_cap (
 {
     o_re_stack->top_index = -1;
     o_re_stack->cap = cap;
-    o_re_stack->bot = malloc(sizeof(brzo_tolken_t) * o_re_stack->cap);
+    o_re_stack->bot = malloc(sizeof(brzo_tolken_t) * cap);
     if (!o_re_stack->bot)
     {
         return 1;
@@ -105,11 +105,12 @@ brzo_M_re_stack_dup(
     brzo_re_stack_t tmp;
     
     if (!i_src) return 1;
-    tmp = *i_src;
     
-    tmp.bot = malloc(sizeof(brzo_tolken_t) * (tmp.top_index+1));
+    tmp.bot = malloc(sizeof(brzo_tolken_t) * (i_src->top_index+1));
     if (!tmp.bot) return 1;
-    memcpy(tmp.bot, i_src->bot, (i_src->top_index+1) * sizeof(brzo_tolken_t));
+    tmp.top_index = i_src->top_index;
+    tmp.cap = i_src->top_index+1;
+    memcpy(tmp.bot, i_src->bot, tmp.cap * sizeof(brzo_tolken_t));
 
     *o_dst = tmp;
 
