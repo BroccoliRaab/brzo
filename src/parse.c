@@ -16,7 +16,13 @@ brzo_re_is_valid(
 );
 
 static const char brzo_charset_d[] = "1234567890";
-/* TODO: Make a word char charset. \w \W */
+
+static const char brzo_charset_w[] = 
+    "1234567890_"
+    "abcdefghijklmnopqrstuvwxyz"
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    ;
+
 /* TODO: Make a better whitespace charset. Missing \t, \r, \n and probably more */
 static const char brzo_charset_s[] = 
     "\x20"                  /* SPACE */                      
@@ -168,6 +174,14 @@ brzo_M_parse_charset(
                     io_charset->negate = 0;
                     continue;
 
+                case 'w':
+                    if (brzo_M_strcat(&io_charset->set, brzo_charset_w))
+                    {
+                        return 1;        
+                    }
+                    io_charset->negate = 0;
+                    continue;
+
                 case 0:
                     return 1;
                 }
@@ -235,6 +249,15 @@ brzo_M_parse_charset(
                 io_charset->set = malloc(sizeof(brzo_charset_d));
                 if (!io_charset) return 1;
                 strcpy(io_charset->set, brzo_charset_d);
+                goto exit;
+
+            case 'W':
+                io_charset->negate = 1;
+                /* FALLTHROUGH */
+            case 'w':
+                io_charset->set = malloc(sizeof(brzo_charset_w));
+                if (!io_charset) return 1;
+                strcpy(io_charset->set, brzo_charset_w);
                 goto exit;
         }
         /* FALLTHROUGH */
