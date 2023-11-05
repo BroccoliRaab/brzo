@@ -7,7 +7,6 @@
 typedef struct brzo_tolken_s brzo_tolken_t;
 typedef struct brzo_charset_s brzo_charset_t;
 typedef struct brzo_re_stack_s brzo_re_stack_t;
-typedef struct brzo_re_stack_s brzo_re_t;
 
 enum brzo_token_id_e
 {
@@ -28,7 +27,7 @@ typedef enum brzo_token_id_e brzo_token_id_t;
 int 
 brzo_M_parse(
         char * p_str,
-        brzo_re_t * o_re
+        brzo_re_stack_t * o_re
 );
 
 void 

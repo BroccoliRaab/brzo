@@ -5,8 +5,8 @@ SRC=src/*
 CFLAGS=-c -O0 -g -std=c99 -Wall -pedantic  -fpic -flto 
 INCLUDE=-Iinclude
 
-bin/libbrzo.a: bin/re_stack.o bin/parse.o bin/derive.o
-	ar rcs bin/libbrzo.la bin/re_stack.o bin/parse.o bin/derive.o
+bin/libbrzo.a: bin/re_stack.o bin/parse.o bin/derive.o bin/api.o
+	ar rcs bin/libbrzo.la bin/re_stack.o bin/parse.o bin/derive.o bin/api.o
 	ar -M <build_lib.mri
 
 bin/derive.o: bin src/derive.c
@@ -17,6 +17,9 @@ bin/re_stack.o: bin src/re_stack.c
 
 bin/parse.o: bin src/parse.c libs
 	$(CC) src/parse.c $(CFLAGS) $(INCLUDE) -o bin/parse.o
+
+bin/api.o: bin src/api.c libs
+	$(CC) src/api.c $(CFLAGS) $(INCLUDE) -o bin/api.o
 
 bin: 
 	mkdir -p bin

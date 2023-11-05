@@ -109,8 +109,6 @@ brzo_M_re_stack_dup(
     
     tmp.bot = malloc(sizeof(brzo_tolken_t) * (tmp.cap));
     if (!tmp.bot) return 1;
-    /* TODO: does not currently copy allocations of charset */
-    /* Decide if is this is intended or not then change name/implementation */
     memcpy(tmp.bot, i_src->bot, i_src->cap * sizeof(brzo_tolken_t));
 
     *o_dst = tmp;

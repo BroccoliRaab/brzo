@@ -3,7 +3,7 @@
 #include <grapheme.h>
 #include "re_stack.h"
 
-int 
+static int 
 grapheme_in_string(
     const char * i_ustr,
     uint_least32_t i_g
@@ -24,8 +24,8 @@ grapheme_in_string(
 
 int
 brzo_re_split(
-        brzo_re_stack_t *io_re,
-        brzo_re_stack_t *o_rhs
+    brzo_re_stack_t *io_re,
+    brzo_re_stack_t *o_rhs
 )
 {
     brzo_tolken_t tok;
@@ -79,6 +79,7 @@ brzo_re_nullable(
 )
 {
     brzo_tolken_t tok;
+    brzo_token_id_t tmp_nullable;
 
     if (!o_nullable)
         return 1;
@@ -88,9 +89,13 @@ brzo_re_nullable(
     
     switch(tok.id)
     {
-    case BRZO_EMPTY_STRING:
     case BRZO_KLEEN:
     case BRZO_QUESTION:
+        if(brzo_re_split(io_re, NULL))
+            return 1;
+    /*FALLTHROUGH*/
+
+    case BRZO_EMPTY_STRING:
         *o_nullable = BRZO_EMPTY_STRING;
         return 0;
 
@@ -100,17 +105,39 @@ brzo_re_nullable(
         return 0;
 
     case BRZO_CONCAT:
-        if (!brzo_re_nullable(io_re, o_nullable))
-            return 0;
-        return brzo_re_nullable(io_re, o_nullable);
-
-    case BRZO_ALTERNATION:
+        if (brzo_re_nullable(io_re, &tmp_nullable))
+            return 1;
         if (brzo_re_nullable(io_re, o_nullable))
             return 1;
-        return brzo_re_nullable(io_re, o_nullable);
+        *o_nullable = 
+                (*o_nullable == BRZO_EMPTY_STRING)
+            && 
+                (tmp_nullable == BRZO_EMPTY_STRING)
+            ?
+                BRZO_EMPTY_STRING 
+            :
+                BRZO_EMPTY_SET;
+        return 0;
 
-    case BRZO_PLUS:
-        return brzo_re_nullable(io_re, o_nullable);
+    case BRZO_ALTERNATION:
+        if (brzo_re_nullable(io_re, &tmp_nullable))
+            return 1;
+        if (brzo_re_nullable(io_re, o_nullable))
+            return 1;
+        *o_nullable = 
+                (*o_nullable == BRZO_EMPTY_STRING)
+            || 
+                (tmp_nullable == BRZO_EMPTY_STRING)
+            ?
+                BRZO_EMPTY_STRING 
+            :
+                BRZO_EMPTY_SET;
+        return 0;
+
+    case BRZO_PLUS:     
+        if (brzo_re_nullable(io_re, o_nullable))
+            return 1;
+        return 0;
 
     default:
         return 1;
@@ -157,6 +184,7 @@ brzo_re_derive(
         tmp_tok.id = BRZO_EMPTY_SET;
         r = brzo_re_stack_push(tmp_tok, io_re);
         if (r) return 1;
+        break;
 
     case BRZO_CHARSET:
         if (brzo_re_stack_pop(io_re, NULL))
@@ -183,6 +211,7 @@ brzo_re_derive(
         r = brzo_re_split(io_re, &tmp_re[0]);
         if (r) goto exit;
 
+        /* Legal LHS dup. It is only passed to nullable and is never merged. */
         r = brzo_M_re_stack_dup(io_re, &tmp_re[1]);
         if (r) goto exit;
 
@@ -223,31 +252,56 @@ brzo_re_derive(
         r = brzo_re_stack_pop(io_re, NULL);
         if (r) goto exit;
 
+        /* Legal LHS dup. Is always split from and is never merged */
         r = brzo_M_re_stack_dup(io_re, &tmp_re[0]);
         if (r) goto exit;
 
         r = brzo_re_derive(i_c, io_re);
         if (r) goto exit;
 
-        r = brzo_re_stack_merge(io_re, &tmp_re[0]);
+        r = brzo_re_split(&tmp_re[0], &tmp_re[1]);
+        if (r) goto exit;
+
+        r = brzo_re_stack_merge(io_re, &tmp_re[1]);
         if (r) goto exit;
 
         tmp_tok.id = BRZO_KLEEN;
+        r = brzo_re_stack_push(tmp_tok, io_re);
+        if (r) goto exit;
+       
+        tmp_tok.id = BRZO_CONCAT;
+        r = brzo_re_stack_push(tmp_tok, io_re);
+        if (r) goto exit;
+       
+        r = brzo_re_stack_merge(io_re, &tmp_re[1]);
+        if (r) goto exit;
+
+        r = brzo_re_nullable(io_re, &nullable);
+        if (r) goto exit;
+
+        tmp_tok.id = nullable;
+        r = brzo_re_stack_push(tmp_tok, io_re);
+        if (r) goto exit;
+       
+        r = brzo_re_stack_merge(io_re, &tmp_re[1]);
+        if (r) goto exit;
+
+        r = brzo_re_derive(i_c, io_re);
+        if (r) goto exit;
+
+        r = brzo_re_stack_merge(io_re, &tmp_re[1]);
+        if (r) goto exit;
+
+        tmp_tok.id = BRZO_KLEEN;
+        r = brzo_re_stack_push(tmp_tok, io_re);
+        if (r) goto exit;
+       
+        tmp_tok.id = BRZO_CONCAT;
         r = brzo_re_stack_push(tmp_tok, io_re);
         if (r) goto exit;
 
         tmp_tok.id = BRZO_CONCAT;
         r = brzo_re_stack_push(tmp_tok, io_re);
-        if (r) goto exit;
-
-        r = brzo_re_stack_merge(io_re, &tmp_re[0]);
-        if (r) goto exit;
-
-        tmp_tok.id = BRZO_KLEEN;
-        r = brzo_re_stack_push(tmp_tok, io_re);
-        if (r) goto exit;
-
-        r = brzo_re_derive(i_c, io_re);
         if (r) goto exit;
 
         tmp_tok.id = BRZO_ALTERNATION;

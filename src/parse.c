@@ -8,7 +8,7 @@
 int
 brzo_re_build(
     const brzo_tolken_t * i_tk,
-    brzo_re_t * o_re
+    brzo_re_stack_t * o_re
 );
 int 
 brzo_re_is_valid(
@@ -16,7 +16,7 @@ brzo_re_is_valid(
 );
 
 static const char brzo_charset_d[] = "1234567890";
-
+/* TODO: Make a word char charset. \w \W */
 /* TODO: Make a better whitespace charset. Missing \t, \r, \n and probably more */
 static const char brzo_charset_s[] = 
     "\x20"                  /* SPACE */                      
@@ -353,7 +353,7 @@ exit:
 int 
 brzo_M_parse(
         char * i_re_str,
-        brzo_re_t * o_re
+        brzo_re_stack_t * o_re
 )
 {
     size_t i = 0, gl = 1, d_i =0;
@@ -361,7 +361,7 @@ brzo_M_parse(
     brzo_tolken_t * tk = NULL;
     size_t plen;
 
-    memset(o_re, 0, sizeof(brzo_re_t));
+    memset(o_re, 0, sizeof(brzo_re_stack_t));
 
     plen = strlen(i_re_str);
     if (plen == 0)
@@ -413,7 +413,7 @@ error:
 int
 brzo_re_build(
     const brzo_tolken_t * i_tk,
-    brzo_re_t * o_re
+    brzo_re_stack_t * o_re
 )
 {
     brzo_tolken_t *cur_tk = (brzo_tolken_t*) i_tk;
@@ -542,8 +542,8 @@ brzo_re_validate_rec(
         {
             return 0;
         }
+    /*TODO: split call here. Remove RHS */
     /*FALLTHROUGH*/
-
     case BRZO_PLUS:
     case BRZO_QUESTION:
     case BRZO_KLEEN:
@@ -558,6 +558,7 @@ brzo_re_validate_rec(
     }
 }
 
+/*TODO: This assumes error = invalid regex*/
 int 
 brzo_re_is_valid(
     const brzo_re_stack_t * re

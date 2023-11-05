@@ -24,7 +24,7 @@ int
 brzo_parse(char * p_str)
 {
     size_t i = 0;
-    brzo_re_t re;
+    brzo_re_stack_t re;
 
     if (brzo_M_parse(p_str, &re))
         goto error;
