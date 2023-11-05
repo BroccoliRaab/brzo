@@ -107,9 +107,9 @@ brzo_M_re_stack_dup(
     if (!i_src) return 1;
     tmp = *i_src;
     
-    tmp.bot = malloc(sizeof(brzo_tolken_t) * (tmp.cap));
+    tmp.bot = malloc(sizeof(brzo_tolken_t) * (tmp.top_index+1));
     if (!tmp.bot) return 1;
-    memcpy(tmp.bot, i_src->bot, i_src->cap * sizeof(brzo_tolken_t));
+    memcpy(tmp.bot, i_src->bot, (i_src->top_index+1) * sizeof(brzo_tolken_t));
 
     *o_dst = tmp;
 
@@ -122,19 +122,21 @@ brzo_re_stack_merge(
     const brzo_re_stack_t * i_top
 )
 {
-    /*TODO: be more memory efficient */
-    io_bottom->bot = realloc(
-        io_bottom->bot,
-        sizeof(brzo_tolken_t) * (io_bottom->cap + i_top->cap)
-    );
-    if (!io_bottom->bot) return 1;
+    if (io_bottom->cap < (io_bottom->top_index + i_top->top_index+2))
+    {
+        io_bottom->cap = io_bottom->top_index + i_top->top_index+2;
+        io_bottom->bot = realloc(
+            io_bottom->bot,
+            sizeof(brzo_tolken_t) * io_bottom->cap
+            );
+        if (!io_bottom->bot) return 1;
+    }
 
     memcpy(
         &io_bottom->bot[io_bottom->top_index+1],
         i_top->bot,
-        i_top->cap * sizeof(brzo_tolken_t)
+        (i_top->top_index+1) * sizeof(brzo_tolken_t)
     );
-    io_bottom->cap = io_bottom->cap + i_top->cap;
     io_bottom->top_index = io_bottom->top_index + i_top->top_index + 1;
     return 0;
 }
