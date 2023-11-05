@@ -1,5 +1,5 @@
 CC?=cc
-CFLAGS= -g -O0 -std=c99 -Wpedantic -Wall -Werror
+CFLAGS= -g -flto -O0 -std=c99 -Wpedantic -Wall -Werror
 LD_FLAGS=-L../bin -lbrzo
 INCLUDE_FLAGS=-I../include
 
