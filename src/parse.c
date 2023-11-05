@@ -20,8 +20,7 @@ static const char brzo_charset_d[] = "1234567890";
 static const char brzo_charset_w[] = 
     "1234567890_"
     "abcdefghijklmnopqrstuvwxyz"
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    ;
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 /* TODO: Make a better whitespace charset. Missing \t, \r, \n and probably more */
 static const char brzo_charset_s[] = 
@@ -95,7 +94,7 @@ brzo_M_parse_charset(
             i++;
         }
 
-        for (; i_re_d[i] != ']' && i < i_re_d_len ; i++)
+        for (; i_re_d[i] != ']' && i < i_re_d_len; i++)
         {
             switch (i_re_d[i])
             {
@@ -158,6 +157,7 @@ brzo_M_parse_charset(
                 i++;
                 switch (i_re_d[i])
                 {
+                /* TODO: Support [^\S], [^\D], [^\W]*/
                 case 's':
                     if (brzo_M_strcat(&io_charset->set, brzo_charset_s))
                     {
@@ -232,7 +232,6 @@ brzo_M_parse_charset(
             case 0:
                 return 1;
 
-            /* TODO: This doesn't quite work. Consider [^\S] */
             case 'S':
                 io_charset->negate = 1;
                 /* FALLTHROUGH */
@@ -372,7 +371,7 @@ exit:
     }
     return r;
 }
-
+/*TODO: Rename. Expose as api?*/ 
 int 
 brzo_M_parse(
         char * i_re_str,
@@ -417,7 +416,6 @@ brzo_M_parse(
 
     return 0;
 
-/*TODO: Refactor. Not consistent style */
 error:
     free(p);
     brzo_F_re_stack_free(o_re);
