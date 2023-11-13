@@ -36,6 +36,56 @@ brzo_M_re_stack_new_cap (
 }
 
 int
+brzo_re_stack_shear(
+    brzo_re_stack_t *io_re,
+    brzo_re_stack_t *o_rhs
+)
+{
+    brzo_tolken_t tok;
+    size_t i = io_re->top_index;
+    int term_c = 1;
+
+    for (;;)
+    {
+        if (brzo_re_stack_pop(io_re, &tok))
+            return 1;
+
+        switch (tok.id)
+        {
+        case BRZO_ALTERNATION:
+        case BRZO_CONCAT:
+            term_c += 1;
+            break;
+        case BRZO_CHARSET:
+        case BRZO_EMPTY_SET:
+        case BRZO_EMPTY_STRING:
+            term_c--;
+            break;    
+        case BRZO_PLUS:
+        case BRZO_KLEEN:
+        case BRZO_QUESTION:
+            break;
+        default:
+            return 1;
+        }
+        if (term_c<1) break;
+    }
+
+    if (o_rhs)
+    {
+        if (brzo_M_re_stack_new_cap(o_rhs, i - io_re->top_index + 1))
+            return 1;
+        memcpy(
+            o_rhs->bot,
+            &io_re->bot[io_re->top_index+1],
+            (i - io_re->top_index) * sizeof(brzo_tolken_t)
+        );
+        o_rhs->top_index = i - io_re->top_index -1 ;
+    }
+    return 0;
+}
+
+int
 brzo_re_stack_push(
     const brzo_tolken_t i_val,
     brzo_re_stack_t * io_re_stack

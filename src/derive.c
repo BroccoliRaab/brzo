@@ -22,57 +22,6 @@ grapheme_in_string(
     }
     return 0;    
 }
-/*TODO: Rename to brzo_re_stack_shear. Move to re_stack code */
-int
-brzo_re_split(
-    brzo_re_stack_t *io_re,
-    brzo_re_stack_t *o_rhs
-)
-{
-    brzo_tolken_t tok;
-    size_t i = io_re->top_index;
-    int term_c = 1;
-
-    for (;;)
-    {
-        if (brzo_re_stack_pop(io_re, &tok))
-            return 1;
-
-        switch (tok.id)
-        {
-        case BRZO_ALTERNATION:
-        case BRZO_CONCAT:
-            term_c += 1;
-            break;
-        case BRZO_CHARSET:
-        case BRZO_EMPTY_SET:
-        case BRZO_EMPTY_STRING:
-            term_c--;
-            break;    
-        case BRZO_PLUS:
-        case BRZO_KLEEN:
-        case BRZO_QUESTION:
-            break;
-        default:
-            return 1;
-        }
-        if (term_c<1) break;
-    }
-
-    if (o_rhs)
-    {
-        if (brzo_M_re_stack_new_cap(o_rhs, i - io_re->top_index + 1))
-            return 1;
-        memcpy(
-            o_rhs->bot,
-            &io_re->bot[io_re->top_index+1],
-            (i - io_re->top_index) * sizeof(brzo_tolken_t)
-        );
-        o_rhs->top_index = i - io_re->top_index -1 ;
-    }
-    return 0;
-}
-
 int
 brzo_re_simplify(
     brzo_re_stack_t * io_re
@@ -147,7 +96,7 @@ brzo_re_simplify(
         break;
 
     case BRZO_CONCAT:
-        r = brzo_re_split(io_re, &rhs);
+        r = brzo_re_stack_shear(io_re, &rhs);
         if (r) goto exit;
         
         r = brzo_re_simplify(io_re);
@@ -185,7 +134,7 @@ brzo_re_simplify(
 
         if (tok.id == BRZO_EMPTY_SET)
         {
-            r = brzo_re_split(io_re, NULL);
+            r = brzo_re_stack_shear(io_re, NULL);
             if (r) goto exit;
 
             r = brzo_re_stack_push(tok, io_re);
@@ -203,7 +152,7 @@ brzo_re_simplify(
         break;
 
     case BRZO_ALTERNATION:
-        r = brzo_re_split(io_re, &rhs);
+        r = brzo_re_stack_shear(io_re, &rhs);
         if (r) goto exit;
         
         r = brzo_re_simplify(io_re);
@@ -270,7 +219,7 @@ brzo_re_nullable(
     {
     case BRZO_KLEEN:
     case BRZO_QUESTION:
-        if(brzo_re_split(io_re, NULL))
+        if(brzo_re_stack_shear(io_re, NULL))
             return 1;
     /*FALLTHROUGH*/
 
@@ -325,6 +274,7 @@ brzo_re_nullable(
 }
 
 /* TODO: Implement shortcuts. ie EMPTY_SET CONCAT X = EMPTY_SET */
+/* TODO: ^ Does this need to happen? Is the brzo_re_simplify call adequate? */
 int
 brzo_re_derive(
     uint_least32_t i_c,
@@ -387,10 +337,11 @@ brzo_re_derive(
         r = brzo_re_stack_pop(io_re, NULL);
         if (r) goto exit;
 
-        r = brzo_re_split(io_re, &tmp_re[0]);
+        r = brzo_re_stack_shear(io_re, &tmp_re[0]);
         if (r) goto exit;
 
         /* Legal LHS dup. It is only passed to nullable and is never merged. */
+        /*TODO: Memory Efficiency. NO LHS DUP */
         r = brzo_M_re_stack_dup(io_re, &tmp_re[1]);
         if (r) goto exit;
 
@@ -432,13 +383,14 @@ brzo_re_derive(
         if (r) goto exit;
 
         /* Legal LHS dup. Is always split from and is never merged */
+        /*TODO: Memory Efficiency. NO LHS DUP */
         r = brzo_M_re_stack_dup(io_re, &tmp_re[0]);
         if (r) goto exit;
 
         r = brzo_re_derive(i_c, io_re);
         if (r) goto exit;
 
-        r = brzo_re_split(&tmp_re[0], &tmp_re[1]);
+        r = brzo_re_stack_shear(&tmp_re[0], &tmp_re[1]);
         if (r) goto exit;
 
         r = brzo_re_stack_merge(io_re, &tmp_re[1]);
@@ -498,7 +450,7 @@ brzo_re_derive(
         break;
 
     case BRZO_KLEEN:
-        r = brzo_re_split(io_re, &tmp_re[1]);
+        r = brzo_re_stack_shear(io_re, &tmp_re[1]);
         if (r) goto exit;
 
         r = brzo_M_re_stack_dup(&tmp_re[1], &tmp_re[0]);
@@ -525,7 +477,7 @@ brzo_re_derive(
         r = brzo_re_stack_pop(io_re, NULL);
         if (r) goto exit;
 
-        r = brzo_re_split(io_re, &tmp_re[0]);
+        r = brzo_re_stack_shear(io_re, &tmp_re[0]);
         if (r) goto exit;
 
         r = brzo_re_derive(i_c, io_re);

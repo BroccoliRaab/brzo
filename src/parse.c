@@ -11,8 +11,9 @@ brzo_re_build(
     brzo_re_stack_t * o_re
 );
 int 
-brzo_re_is_valid(
-    const brzo_re_stack_t * re
+brzo_re_validate(
+    const brzo_re_stack_t * re,
+    int *valid
 );
 
 static const char brzo_charset_d[] = "1234567890";
@@ -372,6 +373,7 @@ exit:
     return r;
 }
 /*TODO: Rename. Expose as api?*/ 
+/*TODO: Refactor. Inconsistent Style */
 int 
 brzo_M_parse(
         char * i_re_str,
@@ -382,6 +384,7 @@ brzo_M_parse(
     uint_least32_t * p = NULL;
     brzo_tolken_t * tk = NULL;
     size_t plen;
+    int valid;
 
     memset(o_re, 0, sizeof(brzo_re_stack_t));
 
@@ -408,8 +411,10 @@ brzo_M_parse(
     if (brzo_re_build(tk, o_re))
         goto error;
 
-    if (!brzo_re_is_valid(o_re))
+    if (brzo_re_validate(o_re, &valid))
         goto error;
+
+    if (!valid) goto error;
 
     free(p);
     free(tk);
@@ -424,9 +429,9 @@ error:
 
     /* Free all tokens' charsets */
     for(i = 0; tk[i].id != BRZO_NULL_TOLKEN; i++)
-    {
-        free(tk[i].charset.set);
-    }
+        if (tk[i].id == BRZO_CHARSET) 
+            free(tk[i].charset.set);
+    
     free(tk);
     return 1;
 }
@@ -544,69 +549,69 @@ exit:
 
 int
 brzo_re_validate_rec(
-    brzo_re_stack_t * re
+    brzo_re_stack_t * re,
+    int *valid
 )
 {
-    int r;
+    int r = 0;
     brzo_tolken_t ct;
     r = brzo_re_stack_pop(re, &ct);
-    if (r)
-    {
-        return 0;   
-    }
+    if (r) goto exit;
     switch(ct.id)
     {
- 
     case BRZO_CONCAT:
     case BRZO_ALTERNATION:
-        if (!brzo_re_validate_rec(re))
-        {
-            return 0;
-        }
-    /*TODO: split call here. Remove RHS */
+        r = brzo_re_validate_rec(re, valid);
+        if (r || !*valid) goto exit;
+        /*
+        r = brzo_re_stack_shear(re, NULL);
+        if (r) goto exit;
+        */
     /*FALLTHROUGH*/
     case BRZO_PLUS:
     case BRZO_QUESTION:
     case BRZO_KLEEN:
-        return brzo_re_validate_rec(re);
- 
+        r = brzo_re_validate_rec(re, valid);
+        break;
 
     case BRZO_CHARSET:
-        return 1;
+    case BRZO_EMPTY_SET:
+    case BRZO_EMPTY_STRING:
+        *valid = 1;
+        break;
 
     default:
-        return 0;
+        *valid = 0;
+        break;
     }
+
+exit:
+    return r;
 }
 
-/*TODO: This assumes error = invalid regex*/
 int 
-brzo_re_is_valid(
-    const brzo_re_stack_t * re
+brzo_re_validate(
+    const brzo_re_stack_t * re,
+    int *valid
 )
 {
     brzo_re_stack_t re_mut;
-    int r;
-    int v = 0;
-    r = brzo_M_re_stack_dup(re, &re_mut);
-    if (r)
-    {
-        goto exit;
-    }
+    int r = 0;
+    memset(&re_mut, 0, sizeof(re_mut));
 
-    if (!brzo_re_validate_rec(&re_mut))
-    {
-        goto exit;
-    }
-    
-    if (!brzo_re_stack_peek(&re_mut, NULL))
-    {
-        goto exit;
-    }
-    
-    v = 1;
+    r = brzo_M_re_stack_dup(re, &re_mut);
+    if (r) goto exit;
+
+    r =brzo_re_validate_rec(&re_mut, valid); 
+    if (r || !*valid) goto exit;
+
+    /* 
+     * If The stack is not empty here then it had excess tokens 
+     * Excess tokens means it is invalid
+    */
+    *valid = brzo_re_stack_peek(&re_mut, NULL);
 
 exit:
     brzo_F_re_stack_free(&re_mut);
-    return v;
+    return r;
 }

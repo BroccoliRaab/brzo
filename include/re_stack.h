@@ -54,4 +54,9 @@ brzo_re_stack_merge(
     const brzo_re_stack_t * i_top
 );
 
+int
+brzo_re_stack_shear(
+    brzo_re_stack_t *io_re,
+    brzo_re_stack_t *o_rhs
+);
 #endif /* RE_STACK_H */
