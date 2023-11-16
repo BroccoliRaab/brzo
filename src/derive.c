@@ -99,7 +99,6 @@ brzo_re_simplify(
         break;
 
     case BRZO_QUESTION:
-        /*
         r = brzo_re_simplify(io_re);
         if (r) goto exit;
 
@@ -123,7 +122,7 @@ brzo_re_simplify(
         if (r) goto exit;
 
         break;
-        */
+        
     case BRZO_EMPTY_STRING:
     case BRZO_EMPTY_SET:
     case BRZO_CHARSET:
