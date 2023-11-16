@@ -22,13 +22,14 @@ grapheme_in_string(
     }
     return 0;    
 }
+
 int
 brzo_re_simplify(
     brzo_re_stack_t * io_re
 )
 {
     int r = 0;
-    brzo_tolken_t tok;
+    brzo_tolken_t tok, tok2;
     brzo_re_stack_t rhs;
 
     rhs.bot = NULL;
@@ -49,12 +50,19 @@ brzo_re_simplify(
 
         if (tok.id == BRZO_EMPTY_STRING)
         {
+            r = brzo_re_stack_shear(io_re, NULL);
+            if (r) goto exit;
+
+            r = brzo_re_stack_push(tok, io_re);
+            if (r) goto exit;
             break;
         }
 
         if (tok.id == BRZO_EMPTY_SET)
         {
             tok.id = BRZO_EMPTY_STRING;
+            r = brzo_re_stack_shear(io_re, NULL);
+            if (r) goto exit;
         } else {
             tok.id = BRZO_KLEEN;
         }
@@ -76,6 +84,11 @@ brzo_re_simplify(
                 tok.id == BRZO_EMPTY_STRING
         )
         {
+            r = brzo_re_stack_shear(io_re, NULL);
+            if (r) goto exit;
+
+            r = brzo_re_stack_push(tok, io_re);
+            if (r) goto exit;
             break;
         }
 
@@ -86,6 +99,7 @@ brzo_re_simplify(
         break;
 
     case BRZO_QUESTION:
+        /*
         r = brzo_re_simplify(io_re);
         if (r) goto exit;
 
@@ -104,13 +118,12 @@ brzo_re_simplify(
             break;
         }
 
-        tok.id = BRZO_PLUS;
+        tok.id = BRZO_QUESTION;
         r = brzo_re_stack_push(tok, io_re);
         if (r) goto exit;
 
         break;
-
-    /* FALLTHROUGH */
+        */
     case BRZO_EMPTY_STRING:
     case BRZO_EMPTY_SET:
     case BRZO_CHARSET:
@@ -198,10 +211,15 @@ brzo_re_simplify(
             break;
         }
 
-        r = brzo_re_stack_peek(&rhs, &tok);
+        r = brzo_re_stack_peek(&rhs, &tok2);
         if (r) goto exit;
 
-        if (tok.id == BRZO_EMPTY_SET)
+        /*TODO: Make this conditional check equality of the whole token.*/
+        if (
+                tok2.id == BRZO_EMPTY_SET
+            ||
+                (tok2.id == tok.id && tok.id != BRZO_CHARSET)
+            )
         {
             break;
         }
@@ -470,18 +488,6 @@ brzo_re_derive(
         }
         r = brzo_re_derive(i_c, io_re);
         if (r) return 1;
-
-        tmp_tok.id = BRZO_EMPTY_STRING;
-        r = brzo_re_stack_push(tmp_tok, io_re);
-        if (r) goto exit;
-
-        tmp_tok.id = BRZO_ALTERNATION;
-        r = brzo_re_stack_push(tmp_tok, io_re);
-        if (r) goto exit;
-
-        tmp_tok.id = BRZO_QUESTION;
-        r = brzo_re_stack_push(tmp_tok, io_re);
-        if (r) goto exit;
         break;
 
     case BRZO_KLEEN:
