@@ -86,7 +86,30 @@ brzo_re_simplify(
         break;
 
     case BRZO_QUESTION:
-    /*TODO: Question does not get simplified */
+        r = brzo_re_simplify(io_re);
+        if (r) goto exit;
+
+        r = brzo_re_stack_peek(io_re, &tok);
+        if (r) goto exit;
+
+        if (tok.id == BRZO_EMPTY_STRING) break;
+        if (tok.id == BRZO_EMPTY_SET) {
+            r = brzo_re_stack_pop(io_re, NULL);
+            if (r) goto exit;
+
+            tok.id = BRZO_EMPTY_STRING;
+            r = brzo_re_stack_push(tok, io_re);
+            if (r) goto exit;
+
+            break;
+        }
+
+        tok.id = BRZO_PLUS;
+        r = brzo_re_stack_push(tok, io_re);
+        if (r) goto exit;
+
+        break;
+
     /* FALLTHROUGH */
     case BRZO_EMPTY_STRING:
     case BRZO_EMPTY_SET:
@@ -447,6 +470,17 @@ brzo_re_derive(
         }
         r = brzo_re_derive(i_c, io_re);
         if (r) return 1;
+
+        tmp_tok.id = BRZO_EMPTY_STRING;
+        r = brzo_re_stack_push(tmp_tok, io_re);
+        if (r) goto exit;
+
+        r = brzo_re_derive(i_c, io_re);
+        if (r) return 1;
+
+        tmp_tok.id = BRZO_ALTERNATION;
+        r = brzo_re_stack_push(tmp_tok, io_re);
+        if (r) goto exit;
         break;
 
     case BRZO_KLEEN:

@@ -159,6 +159,7 @@ brzo_M_parse_charset(
                 switch (i_re_d[i])
                 {
                 /* TODO: Support [^\S], [^\D], [^\W]*/
+                /* TODO: Support escape sequences \r \n \t */
                 case 's':
                     if (brzo_M_strcat(&io_charset->set, brzo_charset_s))
                     {
@@ -215,6 +216,7 @@ brzo_M_parse_charset(
         io_charset->negate = 1;
         break;
 
+    /* TODO: Support escape sequences \r \n \t */
     case '\\':
         i++;
         switch (i_re_d[i])
@@ -563,10 +565,6 @@ brzo_re_validate_rec(
     case BRZO_ALTERNATION:
         r = brzo_re_validate_rec(re, valid);
         if (r || !*valid) goto exit;
-        /*
-        r = brzo_re_stack_shear(re, NULL);
-        if (r) goto exit;
-        */
     /*FALLTHROUGH*/
     case BRZO_PLUS:
     case BRZO_QUESTION:
