@@ -475,10 +475,11 @@ brzo_re_derive(
         r = brzo_re_stack_push(tmp_tok, io_re);
         if (r) goto exit;
 
-        r = brzo_re_derive(i_c, io_re);
-        if (r) return 1;
-
         tmp_tok.id = BRZO_ALTERNATION;
+        r = brzo_re_stack_push(tmp_tok, io_re);
+        if (r) goto exit;
+
+        tmp_tok.id = BRZO_QUESTION;
         r = brzo_re_stack_push(tmp_tok, io_re);
         if (r) goto exit;
         break;
